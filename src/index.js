@@ -243,9 +243,9 @@ app.post('/mcp', async (req, res) => {
                 resources: {},
               },
               serverInfo: {
-                name: 'drivers',
+                name: 'driving-instructors',
                 version: '1.0.0',
-                description: 'Find and book professional drivers in your area. Browse available drivers, view their profiles with ratings and availability, and book rides for any occasion.',
+                description: 'Find and book UK driving instructors in your area. Filter by transmission (Manual/Automatic), view ratings and availability, compare prices, and book lessons.',
               },
             },
           };
@@ -259,8 +259,8 @@ app.post('/mcp', async (req, res) => {
               resources: [
                 {
                   uri: 'ui://widget/driver-card.html',
-                  name: 'Driver Profile Widget',
-                  description: 'Interactive driver profile component with booking information',
+                  name: 'Driving Instructor Finder',
+                  description: 'Interactive UK driving instructor finder with filters, sorting, and booking',
                   mimeType: 'text/html+skybridge',
                 },
               ],
@@ -284,7 +284,7 @@ app.post('/mcp', async (req, res) => {
                     `.trim(),
                     _meta: {
                       'openai/widgetPrefersBorder': false,
-                      'openai/widgetDescription': 'Displays driver profiles with ratings, vehicle information, availability, and booking options.',
+                      'openai/widgetDescription': 'UK driving instructor finder with filters (Manual/Automatic, time, day, gender), sorting options, and booking functionality.',
                     },
                   },
                 ],
@@ -310,8 +310,8 @@ app.post('/mcp', async (req, res) => {
               tools: [
                 {
                   name: 'search_drivers',
-                  title: 'Search Drivers',
-                  description: 'Search for available drivers in your area. Use when user asks to: find drivers, book a driver, need transportation, search for rides, or asks about available drivers. Returns driver profiles with ratings, vehicle info, and availability.',
+                  title: 'Find Driving Instructors',
+                  description: 'Find UK driving instructors in your area. Use when user asks to: find instructors, book lessons, learn to drive, or asks about driving lessons. Returns instructor profiles with ratings, transmission type, prices, and availability.',
                   inputSchema: {
                     type: 'object',
                     properties: {
@@ -327,8 +327,8 @@ app.post('/mcp', async (req, res) => {
                   },
                   _meta: {
                     'openai/outputTemplate': 'ui://widget/driver-card.html',
-                    'openai/toolInvocation/invoking': 'Searching for drivers...',
-                    'openai/toolInvocation/invoked': 'Driver profiles displayed',
+                    'openai/toolInvocation/invoking': 'Searching for driving instructors...',
+                    'openai/toolInvocation/invoked': 'Instructor profiles displayed',
                   },
                 },
                 {
