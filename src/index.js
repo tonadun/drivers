@@ -43,46 +43,46 @@ async function loadComponentBundle() {
 function handleToolCall(toolName, args) {
   switch (toolName) {
     case 'search_drivers': {
-      // Get 3 random drivers or filter by criteria
+      // Get all instructors or filter by criteria
       let filteredDrivers = [...driversData.drivers];
 
-      // Filter by city if provided
+      // Filter by area/city if provided
       if (args?.city) {
         filteredDrivers = filteredDrivers.filter(driver =>
-          driver.serviceArea.city.toLowerCase().includes(args.city.toLowerCase())
+          driver.area.toLowerCase().includes(args.city.toLowerCase())
         );
       }
 
-      // Filter by vehicle type if provided
+      // Filter by transmission if provided
       if (args?.vehicleType) {
         filteredDrivers = filteredDrivers.filter(driver =>
-          driver.vehicle.type.toLowerCase().includes(args.vehicleType.toLowerCase())
+          driver.transmission.toLowerCase().includes(args.vehicleType.toLowerCase())
         );
       }
 
-      // Get up to 3 drivers
-      const selectedDrivers = filteredDrivers.slice(0, 3);
+      // Get all matching instructors
+      const selectedDrivers = filteredDrivers;
 
       if (selectedDrivers.length === 0) {
         return {
           content: [
             {
               type: 'text',
-              text: 'No drivers found matching your criteria. Try searching with different parameters.',
+              text: 'No instructors found matching your criteria. Try searching with different parameters.',
             },
           ],
         };
       }
 
-      // Format drivers as text for fallback
+      // Format instructors as text for fallback
       const formattedDrivers = selectedDrivers.map(driver => `
 # 🚗 ${driver.name}
 
-⭐ **${driver.rating}/5.0** (${driver.totalRides} rides) | ${driver.yearsExperience} years experience
+⭐ **${driver.rating}/5.0** (${driver.totalReviews} reviews) | ${driver.yearsExperience} years experience
 
-**Vehicle:** ${driver.vehicle.model} (${driver.vehicle.color} ${driver.vehicle.type})
-**Service Area:** ${driver.serviceArea.city}, ${driver.serviceArea.state} (${driver.serviceArea.radius} mile radius)
-**Hourly Rate:** $${driver.hourlyRate}/hour
+**Transmission:** ${driver.transmission}
+**Area:** ${driver.area} (${driver.postcode})
+**Price:** £${driver.pricePerHour}/hour
 
 **Specialties:** ${driver.specialties.join(', ')}
 **Languages:** ${driver.languages.join(', ')}
@@ -90,7 +90,7 @@ function handleToolCall(toolName, args) {
 ${driver.bio}
 `).join('\n---\n\n');
 
-      const fullText = `${formattedDrivers}\n\n*Book a professional driver today!* 🚗`;
+      const fullText = `${formattedDrivers}\n\n*Book a professional driving instructor today!* 🚗`;
 
       return {
         content: [
@@ -110,21 +110,21 @@ ${driver.bio}
         id: driver.id,
         name: driver.name,
         rating: driver.rating,
-        vehicleType: driver.vehicle.type,
-        city: driver.serviceArea.city,
-        hourlyRate: driver.hourlyRate,
+        transmission: driver.transmission,
+        area: driver.area,
+        pricePerHour: driver.pricePerHour,
       }));
 
       const formattedList = `
-# Available Drivers
+# Available Driving Instructors
 
 ${driversList.map(driver => `
 ## ${driver.name}
 - **ID:** ${driver.id}
 - **Rating:** ${driver.rating}/5.0
-- **Vehicle:** ${driver.vehicleType}
-- **Location:** ${driver.city}
-- **Rate:** $${driver.hourlyRate}/hour
+- **Transmission:** ${driver.transmission}
+- **Location:** ${driver.area}
+- **Rate:** £${driver.pricePerHour}/hour
 `).join('\n')}
 
 Use \`search_drivers\` to get detailed profiles and availability.
@@ -149,7 +149,7 @@ Use \`search_drivers\` to get detailed profiles and availability.
           content: [
             {
               type: 'text',
-              text: `Driver not found. Use \`list_all_drivers\` to see available drivers.`,
+              text: `Instructor not found. Use \`list_all_drivers\` to see available instructors.`,
             },
           ],
         };
@@ -158,12 +158,12 @@ Use \`search_drivers\` to get detailed profiles and availability.
       const formattedDriver = `
 # 🚗 ${driver.name}
 
-⭐ **${driver.rating}/5.0** (${driver.totalRides} rides) | ${driver.yearsExperience} years experience
+⭐ **${driver.rating}/5.0** (${driver.totalReviews} reviews) | ${driver.yearsExperience} years experience
 
-**Vehicle:** ${driver.vehicle.model} (${driver.vehicle.color} ${driver.vehicle.type})
-**License Plate:** ${driver.vehicle.licensePlate}
-**Service Area:** ${driver.serviceArea.city}, ${driver.serviceArea.state} (${driver.serviceArea.radius} mile radius)
-**Hourly Rate:** $${driver.hourlyRate}/hour
+**Transmission:** ${driver.transmission}
+**Gender:** ${driver.gender}
+**Area:** ${driver.area} (${driver.postcode})
+**Price:** £${driver.pricePerHour}/hour
 
 **Specialties:** ${driver.specialties.join(', ')}
 **Languages:** ${driver.languages.join(', ')}
@@ -172,9 +172,11 @@ Use \`search_drivers\` to get detailed profiles and availability.
 ${driver.bio}
 
 ## Weekly Availability
-${Object.entries(driver.availability).map(([day, slots]) =>
-  `**${day.charAt(0).toUpperCase() + day.slice(1)}:** ${slots.length > 0 ? slots.join(', ') : 'Not available'}`
+${Object.entries(driver.weeklyAvailability).map(([day, available]) =>
+  `**${day.charAt(0).toUpperCase() + day.slice(1)}:** ${available ? 'Available' : 'Not available'}`
 ).join('\n')}
+
+**Time Preference:** ${driver.timePreference.join(', ')}
 `;
 
       return {
