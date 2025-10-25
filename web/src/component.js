@@ -13,6 +13,7 @@
 
   let sortBy = 'Featured'; // Featured, Price Low, Price High, Rating Low, Rating High
   let showFilters = false;
+  let selectedInstructorForCalendar = null; // Track which instructor's calendar is shown
 
   // Get data from window.openai.toolOutput
   const getData = () => {
@@ -130,10 +131,194 @@
         window.openai.sendFollowupMessage({ prompt: `I want to book lessons with ${instructor.name}` });
       }
     } else if (action === 'availability') {
-      if (window.openai?.sendFollowupMessage) {
-        window.openai.sendFollowupMessage({ prompt: `Show me ${instructor.name}'s full availability schedule` });
-      }
+      selectedInstructorForCalendar = instructor;
+      render();
     }
+  };
+
+  const closeCalendar = () => {
+    selectedInstructorForCalendar = null;
+    render();
+  };
+
+  // Generate calendar for next 4 weeks
+  const renderCalendar = (instructor) => {
+    const today = new Date();
+    const weeks = [];
+
+    // Generate 4 weeks starting from today
+    for (let weekOffset = 0; weekOffset < 4; weekOffset++) {
+      const week = [];
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + (weekOffset * 7) + dayOffset);
+        week.push(date);
+      }
+      weeks.push(week);
+    }
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    const monthYear = `${today.toLocaleString('default', { month: 'long' })} ${today.getFullYear()}`;
+
+    return `
+      <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 20px;
+      " onclick="if(event.target === this) window.__closeCalendar()">
+        <div style="
+          background: white;
+          border-radius: 12px;
+          max-width: 800px;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        " onclick="event.stopPropagation()">
+
+          <!-- Header -->
+          <div style="
+            padding: 24px;
+            border-bottom: 1px solid #E0E0E0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+          ">
+            <div>
+              <h2 style="margin: 0; font-size: 20px; color: #1a1a1a;">${instructor.name}'s Availability</h2>
+              <div style="font-size: 14px; color: #666; margin-top: 4px;">
+                ${instructor.transmission} • £${instructor.pricePerHour}/hour • ${instructor.area}
+              </div>
+            </div>
+            <button onclick="window.__closeCalendar()" style="
+              background: transparent;
+              border: none;
+              font-size: 28px;
+              cursor: pointer;
+              color: #666;
+              line-height: 1;
+              padding: 0;
+              width: 32px;
+              height: 32px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            ">&times;</button>
+          </div>
+
+          <!-- Time Preference Notice -->
+          <div style="padding: 16px 24px; background: #F0F8FF; border-left: 4px solid #1E90FF; margin: 16px 24px;">
+            <div style="font-size: 14px; color: #1a1a1a;">
+              <strong>Preferred Times:</strong> ${instructor.timePreference.join(', ')}
+            </div>
+          </div>
+
+          <!-- Calendar -->
+          <div style="padding: 24px;">
+            <div style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #1a1a1a;">
+              ${monthYear}
+            </div>
+
+            <!-- Day Headers -->
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 8px;">
+              ${dayNames.map(day => `
+                <div style="text-align: center; font-size: 12px; font-weight: 600; color: #666; padding: 8px 0;">
+                  ${day}
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Calendar Grid -->
+            ${weeks.map((week, weekIndex) => `
+              <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 8px;">
+                ${week.map((date, dayIndex) => {
+                  const dayOfWeek = date.getDay();
+                  const dayKey = dayKeys[dayOfWeek];
+                  const isAvailable = instructor.weeklyAvailability[dayKey];
+                  const isPast = date < today && date.toDateString() !== today.toDateString();
+                  const isToday = date.toDateString() === today.toDateString();
+
+                  return `
+                    <div style="
+                      aspect-ratio: 1;
+                      display: flex;
+                      flex-direction: column;
+                      align-items: center;
+                      justify-content: center;
+                      border-radius: 8px;
+                      border: 2px solid ${isToday ? '#1E90FF' : (isAvailable && !isPast ? '#E0E0E0' : 'transparent')};
+                      background: ${isPast ? '#F5F5F5' : (isAvailable ? '#F0F8FF' : 'white')};
+                      cursor: ${isAvailable && !isPast ? 'pointer' : 'default'};
+                      opacity: ${isPast ? '0.5' : '1'};
+                      transition: all 0.2s;
+                      position: relative;
+                    "
+                    ${isAvailable && !isPast ? `
+                      onmouseover="this.style.background='#E3F2FD'; this.style.borderColor='#1E90FF'"
+                      onmouseout="this.style.background='#F0F8FF'; this.style.borderColor='${isToday ? '#1E90FF' : '#E0E0E0'}'"
+                      onclick="window.__bookDate('${instructor.name}', '${date.toDateString()}')"
+                    ` : ''}>
+                      <div style="font-size: 14px; font-weight: ${isToday ? '700' : '500'}; color: ${isPast ? '#999' : '#1a1a1a'};">
+                        ${date.getDate()}
+                      </div>
+                      ${isAvailable && !isPast ? `
+                        <div style="width: 6px; height: 6px; border-radius: 50%; background: #4CAF50; margin-top: 4px;"></div>
+                      ` : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `).join('')}
+
+            <!-- Legend -->
+            <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #E0E0E0;">
+              <div style="display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 12px; height: 12px; border-radius: 50%; background: #4CAF50;"></div>
+                  <span style="color: #666;">Available</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 12px; height: 12px; border-radius: 50%; background: #E0E0E0;"></div>
+                  <span style="color: #666;">Not Available</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div style="width: 12px; height: 12px; border: 2px solid #1E90FF; border-radius: 50%;"></div>
+                  <span style="color: #666;">Today</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Note -->
+            <div style="margin-top: 16px; padding: 12px; background: #FFF9E6; border-radius: 6px; font-size: 13px; color: #666;">
+              <strong>Note:</strong> This calendar shows typical weekly availability. Click on an available date to book a lesson.
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  const bookDate = (instructorName, dateString) => {
+    if (window.openai?.sendFollowupMessage) {
+      window.openai.sendFollowupMessage({
+        prompt: `I want to book a lesson with ${instructorName} on ${dateString}`
+      });
+    }
+    closeCalendar();
   };
 
   // Render weekday circles
@@ -493,6 +678,9 @@
         </div>
         ` : ''}
       </div>
+
+      <!-- Calendar Modal -->
+      ${selectedInstructorForCalendar ? renderCalendar(selectedInstructorForCalendar) : ''}
     `;
   };
 
@@ -504,6 +692,8 @@
   window.__handleInstructorAction = (action, instructor) => handleAction(action, instructor);
   window.__nextPage = nextPage;
   window.__prevPage = prevPage;
+  window.__closeCalendar = closeCalendar;
+  window.__bookDate = bookDate;
 
   // Initial render
   render();
