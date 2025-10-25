@@ -1,0 +1,26 @@
+{
+  "name": "drivers",
+  "version": "1.0.0",
+  "description": "A ChatGPT App for finding and booking drivers in your area with available time slots",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node test-server.js"
+  },
+  "keywords": [
+    "chatgpt",
+    "mcp",
+    "drivers",
+    "booking",
+    "transportation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

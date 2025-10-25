@@ -1,0 +1,164 @@
+{
+  "drivers": [
+    {
+      "id": "driver-001",
+      "name": "John Smith",
+      "photo": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d",
+      "rating": 4.9,
+      "totalRides": 1250,
+      "yearsExperience": 8,
+      "vehicle": {
+        "type": "Sedan",
+        "model": "Toyota Camry 2022",
+        "licensePlate": "ABC-1234",
+        "color": "Silver"
+      },
+      "serviceArea": {
+        "city": "San Francisco",
+        "state": "CA",
+        "radius": 25
+      },
+      "hourlyRate": 45,
+      "specialties": ["Airport transfers", "Business trips", "Long distance"],
+      "languages": ["English", "Spanish"],
+      "availability": {
+        "monday": ["09:00-12:00", "14:00-18:00"],
+        "tuesday": ["09:00-12:00", "14:00-18:00"],
+        "wednesday": ["09:00-12:00", "14:00-18:00"],
+        "thursday": ["09:00-12:00", "14:00-18:00"],
+        "friday": ["09:00-12:00", "14:00-20:00"],
+        "saturday": ["10:00-16:00"],
+        "sunday": []
+      },
+      "bio": "Professional driver with 8 years of experience. Specializing in safe, comfortable rides for business professionals and airport transfers. Clean vehicle, always on time."
+    },
+    {
+      "id": "driver-002",
+      "name": "Maria Garcia",
+      "photo": "https://images.unsplash.com/photo-1494790108377-be9c29b29330",
+      "rating": 5.0,
+      "totalRides": 890,
+      "yearsExperience": 5,
+      "vehicle": {
+        "type": "SUV",
+        "model": "Honda CR-V 2023",
+        "licensePlate": "XYZ-5678",
+        "color": "Black"
+      },
+      "serviceArea": {
+        "city": "San Francisco",
+        "state": "CA",
+        "radius": 30
+      },
+      "hourlyRate": 55,
+      "specialties": ["Family trips", "Shopping assistance", "Medical appointments"],
+      "languages": ["English", "Spanish", "Portuguese"],
+      "availability": {
+        "monday": ["08:00-14:00"],
+        "tuesday": ["08:00-14:00"],
+        "wednesday": ["08:00-14:00"],
+        "thursday": ["08:00-14:00"],
+        "friday": ["08:00-14:00"],
+        "saturday": ["09:00-17:00"],
+        "sunday": ["10:00-15:00"]
+      },
+      "bio": "Friendly and reliable driver specializing in family transportation and medical appointments. Spacious SUV perfect for groups and shopping trips."
+    },
+    {
+      "id": "driver-003",
+      "name": "David Chen",
+      "photo": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e",
+      "rating": 4.8,
+      "totalRides": 2100,
+      "yearsExperience": 12,
+      "vehicle": {
+        "type": "Luxury Sedan",
+        "model": "Mercedes-Benz E-Class 2023",
+        "licensePlate": "LUX-9012",
+        "color": "Black"
+      },
+      "serviceArea": {
+        "city": "San Francisco",
+        "state": "CA",
+        "radius": 40
+      },
+      "hourlyRate": 85,
+      "specialties": ["Executive transport", "VIP services", "Special events"],
+      "languages": ["English", "Mandarin", "Cantonese"],
+      "availability": {
+        "monday": ["06:00-22:00"],
+        "tuesday": ["06:00-22:00"],
+        "wednesday": ["06:00-22:00"],
+        "thursday": ["06:00-22:00"],
+        "friday": ["06:00-23:00"],
+        "saturday": ["08:00-23:00"],
+        "sunday": ["10:00-20:00"]
+      },
+      "bio": "Premium chauffeur service with over 12 years of experience serving executives and VIP clients. Luxury vehicle, professional demeanor, complete discretion."
+    },
+    {
+      "id": "driver-004",
+      "name": "Sarah Johnson",
+      "photo": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80",
+      "rating": 4.7,
+      "totalRides": 650,
+      "yearsExperience": 4,
+      "vehicle": {
+        "type": "Compact",
+        "model": "Honda Civic 2021",
+        "licensePlate": "ECO-3456",
+        "color": "Blue"
+      },
+      "serviceArea": {
+        "city": "San Francisco",
+        "state": "CA",
+        "radius": 20
+      },
+      "hourlyRate": 35,
+      "specialties": ["City tours", "Quick errands", "Budget-friendly rides"],
+      "languages": ["English"],
+      "availability": {
+        "monday": ["10:00-18:00"],
+        "tuesday": ["10:00-18:00"],
+        "wednesday": ["10:00-18:00"],
+        "thursday": ["10:00-18:00"],
+        "friday": ["10:00-18:00"],
+        "saturday": [],
+        "sunday": []
+      },
+      "bio": "Affordable and reliable driver for daily commutes and quick errands. Fuel-efficient vehicle, friendly service, perfect for city trips."
+    },
+    {
+      "id": "driver-005",
+      "name": "Michael Brown",
+      "photo": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
+      "rating": 4.9,
+      "totalRides": 1560,
+      "yearsExperience": 10,
+      "vehicle": {
+        "type": "Van",
+        "model": "Mercedes Sprinter 2022",
+        "licensePlate": "VAN-7890",
+        "color": "White"
+      },
+      "serviceArea": {
+        "city": "San Francisco",
+        "state": "CA",
+        "radius": 50
+      },
+      "hourlyRate": 75,
+      "specialties": ["Group transportation", "Wine tours", "Corporate events"],
+      "languages": ["English", "French"],
+      "availability": {
+        "monday": ["09:00-19:00"],
+        "tuesday": ["09:00-19:00"],
+        "wednesday": ["09:00-19:00"],
+        "thursday": ["09:00-19:00"],
+        "friday": ["09:00-22:00"],
+        "saturday": ["08:00-23:00"],
+        "sunday": ["09:00-20:00"]
+      },
+      "bio": "Experienced group transportation specialist. Perfect for wine tours, corporate events, and airport shuttles. Comfortable seating for up to 12 passengers."
+    }
+  ]
+}
