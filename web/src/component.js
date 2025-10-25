@@ -1,225 +1,378 @@
-// Driver booking component - Apps SDK compliant
-(function () {
-  'use strict';
+// Driver booking carousel component with inline styles
+(function() {
+  let currentIndex = 0;
 
-  let currentDriverIndex = 0;
+  // Get data from window.openai.toolOutput
+  const getData = () => {
+    const toolOutput = window.openai?.toolOutput;
+    return toolOutput?.drivers || [];
+  };
 
-  // Get driver data from window.openai.toolOutput
-  function getDrivers() {
-    try {
-      const toolOutput = window?.openai?.toolOutput;
-      if (!toolOutput) {
-        console.error('No toolOutput available');
-        return [];
-      }
-      return toolOutput.drivers || [];
-    } catch (error) {
-      console.error('Error reading drivers:', error);
-      return [];
-    }
-  }
+  const getTheme = () => {
+    return window.openai?.theme || 'light';
+  };
 
-  // Get theme from window.openai
-  function getTheme() {
-    try {
-      return window?.openai?.theme || 'light';
-    } catch (error) {
-      return 'light';
-    }
-  }
-
-  // Navigate between drivers in carousel
-  function navigateDrivers(direction) {
-    const drivers = getDrivers();
-    if (drivers.length === 0) return;
-
+  // Navigate between drivers
+  const navigate = (direction) => {
+    const drivers = getData();
     if (direction === 'next') {
-      currentDriverIndex = (currentDriverIndex + 1) % drivers.length;
+      currentIndex = (currentIndex + 1) % drivers.length;
     } else {
-      currentDriverIndex = (currentDriverIndex - 1 + drivers.length) % drivers.length;
+      currentIndex = (currentIndex - 1 + drivers.length) % drivers.length;
     }
-    renderApp();
-  }
+    render();
+  };
 
-  // Handle driver action buttons
-  function handleDriverAction(action, driverName) {
-    try {
-      if (!window?.openai?.sendFollowupMessage) {
-        console.error('sendFollowupMessage not available');
-        return;
+  // Action button handlers
+  const handleAction = (action, driver) => {
+    if (action === 'book') {
+      if (window.openai?.sendFollowupMessage) {
+        window.openai.sendFollowupMessage({ prompt: `I want to book ${driver.name} for a ride` });
       }
-
-      let message = '';
-      switch (action) {
-        case 'book':
-          message = `I want to book ${driverName} for a ride`;
-          break;
-        case 'schedule':
-          message = `Show me ${driverName}'s availability schedule`;
-          break;
-        case 'details':
-          message = `Tell me more about ${driverName}`;
-          break;
-        default:
-          return;
+    } else if (action === 'schedule') {
+      if (window.openai?.sendFollowupMessage) {
+        window.openai.sendFollowupMessage({ prompt: `Show me ${driver.name}'s full availability schedule` });
       }
-
-      window.openai.sendFollowupMessage({ prompt: message });
-    } catch (error) {
-      console.error('Error sending follow-up:', error);
+    } else if (action === 'details') {
+      if (window.openai?.sendFollowupMessage) {
+        window.openai.sendFollowupMessage({ prompt: `Tell me more about ${driver.name}` });
+      }
     }
-  }
+  };
 
   // Render star rating
-  function renderStars(rating) {
+  const renderStars = (rating, starColor, emptyColor) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
     let html = '';
 
     for (let i = 0; i < fullStars; i++) {
-      html += '<span class="star">★</span>';
+      html += `<span style="color: ${starColor}; font-size: 16px;">★</span>`;
     }
     if (hasHalfStar) {
-      html += '<span class="star">⯨</span>';
+      html += `<span style="color: ${starColor}; font-size: 16px;">⯨</span>`;
     }
     for (let i = fullStars + (hasHalfStar ? 1 : 0); i < 5; i++) {
-      html += '<span class="star-empty">★</span>';
+      html += `<span style="color: ${emptyColor}; font-size: 16px;">★</span>`;
     }
 
     return html;
-  }
+  };
 
-  // Render single driver card
-  function renderDriverCard(driver, theme) {
+  // Render driver card
+  const renderDriverCard = (driver, theme) => {
     const isDark = theme === 'dark';
+
+    const gradient = isDark
+      ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+      : 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)';
+
+    const textColor = isDark ? '#FFFFFF' : '#FFFFFF';
+    const subtextColor = isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.95)';
+    const badgeBg = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.25)';
+    const sectionBg = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.2)';
+    const buttonBg = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.9)';
+    const buttonText = isDark ? '#FFFFFF' : '#667eea';
+    const buttonHover = isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 1)';
+    const starColor = isDark ? '#FFD700' : '#FFA500';
+    const starEmpty = isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.4)';
 
     // Get today's availability
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const today = days[new Date().getDay()];
     const todaySlots = driver.availability?.[today] || [];
     const availabilityText = todaySlots.length > 0
-      ? `Today: ${todaySlots[0]}`
+      ? `Available today: ${todaySlots[0]}`
       : 'Not available today';
 
     return `
-      <div class="driver-card ${isDark ? 'dark' : 'light'}">
+      <div style="
+        background: ${gradient};
+        border-radius: 16px;
+        padding: 24px;
+        color: ${textColor};
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        max-width: 100%;
+        margin: 0 auto;
+      ">
         <!-- Driver Header -->
-        <div class="driver-header">
-          <img src="${driver.photo}" alt="${driver.name}" class="driver-photo" />
-          <div class="driver-info">
-            <h2 class="driver-name">${driver.name}</h2>
-            <div class="driver-rating">
-              ${renderStars(driver.rating)}
-              <span class="rating-text">${driver.rating} (${driver.totalRides} rides)</span>
+        <div style="display: flex; gap: 16px; margin-bottom: 20px; align-items: center;">
+          <img src="${driver.photo}" alt="${driver.name}" style="
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+          ">
+          <div style="flex: 1;">
+            <h2 style="
+              margin: 0 0 8px 0;
+              font-size: 22px;
+              font-weight: 700;
+              line-height: 1.2;
+            ">${driver.name}</h2>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              ${renderStars(driver.rating, starColor, starEmpty)}
+              <span style="font-size: 14px; font-weight: 600;">${driver.rating}/5.0</span>
+              <span style="font-size: 13px; opacity: 0.8;">(${driver.totalRides} rides)</span>
             </div>
-            <div class="driver-experience">${driver.yearsExperience} years experience</div>
+            <div style="font-size: 13px; opacity: 0.9;">
+              ${driver.yearsExperience} years experience
+            </div>
           </div>
         </div>
 
-        <!-- Quick Info -->
-        <div class="quick-info">
-          <span class="badge">🚗 ${driver.vehicle.type}</span>
-          <span class="badge">📍 ${driver.serviceArea.city}</span>
-          <span class="badge">💵 $${driver.hourlyRate}/hr</span>
+        <!-- Quick Info Badges -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+          <span style="
+            background: ${badgeBg};
+            color: ${textColor};
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+          ">🚗 ${driver.vehicle.type}</span>
+          <span style="
+            background: ${badgeBg};
+            color: ${textColor};
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+          ">📍 ${driver.serviceArea.city}, ${driver.serviceArea.state}</span>
+          <span style="
+            background: ${badgeBg};
+            color: ${textColor};
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+          ">💰 $${driver.hourlyRate}/hr</span>
         </div>
 
         <!-- Vehicle Info -->
-        <div class="info-section">
-          <div class="section-title">Vehicle</div>
-          <div class="section-content">
-            ${driver.vehicle.model} • ${driver.vehicle.color}
+        <div style="
+          background: ${sectionBg};
+          padding: 14px;
+          border-radius: 10px;
+          margin-bottom: 14px;
+        ">
+          <div style="font-size: 12px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+            🚙 Vehicle
+          </div>
+          <div style="font-size: 14px; line-height: 1.6; opacity: 0.95;">
+            <strong>${driver.vehicle.model}</strong><br>
+            ${driver.vehicle.color} ${driver.vehicle.type} • ${driver.vehicle.licensePlate}
           </div>
         </div>
 
         <!-- Specialties -->
-        <div class="info-section">
-          <div class="section-title">Specialties</div>
-          <div class="specialty-tags">
-            ${driver.specialties.map(s => `<span class="specialty-tag">${s}</span>`).join('')}
+        <div style="
+          background: ${sectionBg};
+          padding: 14px;
+          border-radius: 10px;
+          margin-bottom: 14px;
+        ">
+          <div style="font-size: 12px; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+            ⭐ Specialties
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            ${driver.specialties.map(specialty => `
+              <span style="
+                background: rgba(255, 255, 255, 0.15);
+                padding: 4px 10px;
+                border-radius: 12px;
+                font-size: 12px;
+              ">${specialty}</span>
+            `).join('')}
           </div>
         </div>
 
         <!-- Availability -->
-        <div class="info-section availability">
-          <div class="section-title">📅 ${availabilityText}</div>
-          <div class="section-content">Service radius: ${driver.serviceArea.radius} miles</div>
+        <div style="
+          background: ${sectionBg};
+          padding: 14px;
+          border-radius: 10px;
+          margin-bottom: 16px;
+          border-left: 3px solid ${isDark ? '#4CAF50' : '#8BC34A'};
+        ">
+          <div style="font-size: 12px; font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+            📅 ${availabilityText}
+          </div>
+          <div style="font-size: 12px; opacity: 0.8;">
+            Service area: ${driver.serviceArea.radius} mile radius
+          </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="action-buttons">
-          <button class="btn btn-primary" onclick="window.__handleDriverAction('book', '${driver.name}')">
-            Book Now
+        <div style="
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 10px;
+          margin-top: 20px;
+        ">
+          <button onclick="window.__handleDriverAction('book', ${JSON.stringify(driver).replace(/"/g, '&quot;')})" style="
+            background: ${buttonBg};
+            color: ${buttonText};
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+          " onmouseover="this.style.background='${buttonHover}'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='${buttonBg}'; this.style.transform='translateY(0)'">
+            📅 Book
           </button>
-          <button class="btn btn-secondary" onclick="window.__handleDriverAction('schedule', '${driver.name}')">
-            Schedule
+          <button onclick="window.__handleDriverAction('schedule', ${JSON.stringify(driver).replace(/"/g, '&quot;')})" style="
+            background: rgba(255, 255, 255, 0.2);
+            color: ${textColor};
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+          " onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'; this.style.transform='translateY(0)'">
+            🕐 Schedule
           </button>
-          <button class="btn btn-secondary" onclick="window.__handleDriverAction('details', '${driver.name}')">
-            Details
+          <button onclick="window.__handleDriverAction('details', ${JSON.stringify(driver).replace(/"/g, '&quot;')})" style="
+            background: rgba(255, 255, 255, 0.2);
+            color: ${textColor};
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+          " onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'; this.style.transform='translateY(0)'">
+            ℹ️ Details
           </button>
         </div>
       </div>
     `;
-  }
-
-  // Render carousel navigation
-  function renderCarouselNav(drivers, isDark) {
-    if (drivers.length <= 1) return '';
-
-    return `
-      <div class="carousel-nav">
-        <button class="nav-btn" onclick="window.__navigateDrivers('prev')">‹</button>
-        <div class="carousel-dots">
-          ${drivers.map((_, i) => `
-            <div class="dot ${i === currentDriverIndex ? 'active' : ''}"
-                 onclick="window.__goToDriver(${i})"></div>
-          `).join('')}
-        </div>
-        <button class="nav-btn" onclick="window.__navigateDrivers('next')">›</button>
-      </div>
-      <div class="carousel-counter">Driver ${currentDriverIndex + 1} of ${drivers.length}</div>
-    `;
-  }
-
-  // Main render function
-  function renderApp() {
-    const drivers = getDrivers();
-    const theme = getTheme();
-    const isDark = theme === 'dark';
-    const root = document.getElementById('root');
-
-    if (!root) {
-      console.error('Root element not found');
-      return;
-    }
-
-    if (drivers.length === 0) {
-      root.innerHTML = '<div class="empty-state">No drivers available</div>';
-      return;
-    }
-
-    const currentDriver = drivers[currentDriverIndex] || drivers[0];
-
-    root.innerHTML = `
-      <div class="app-container ${isDark ? 'dark' : 'light'}">
-        ${renderDriverCard(currentDriver, theme)}
-        ${renderCarouselNav(drivers, isDark)}
-      </div>
-    `;
-  }
-
-  // Expose functions to global scope
-  window.__navigateDrivers = navigateDrivers;
-  window.__goToDriver = function(index) {
-    currentDriverIndex = index;
-    renderApp();
   };
-  window.__handleDriverAction = handleDriverAction;
+
+  // Render carousel
+  const render = () => {
+    const drivers = getData();
+    const theme = getTheme();
+
+    if (!drivers || drivers.length === 0) {
+      document.getElementById('root').innerHTML = '<p style="text-align: center; padding: 20px;">No drivers available</p>';
+      return;
+    }
+
+    const isDark = theme === 'dark';
+    const navButtonBg = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(102, 126, 234, 0.3)';
+    const navButtonColor = isDark ? '#FFFFFF' : '#FFFFFF';
+    const dotColor = isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(102, 126, 234, 0.3)';
+    const dotActiveColor = isDark ? '#FFFFFF' : '#667eea';
+    const counterColor = isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)';
+
+    const currentDriver = drivers[currentIndex] || drivers[0];
+
+    document.getElementById('root').innerHTML = `
+      <div style="
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 0 0 20px 0;
+      ">
+        ${renderDriverCard(currentDriver, theme)}
+
+        ${drivers.length > 1 ? `
+        <div style="
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 16px;
+          margin-top: 16px;
+        ">
+          <button onclick="window.__navigateDrivers('prev')" style="
+            background: ${navButtonBg};
+            color: ${navButtonColor};
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            ‹
+          </button>
+
+          <div style="display: flex; gap: 8px;">
+            ${drivers.map((_, i) => `
+              <div onclick="window.__goToDriver(${i})" style="
+                width: ${i === currentIndex ? '28px' : '10px'};
+                height: 10px;
+                border-radius: 5px;
+                background: ${i === currentIndex ? dotActiveColor : dotColor};
+                cursor: pointer;
+                transition: all 0.3s;
+              "></div>
+            `).join('')}
+          </div>
+
+          <button onclick="window.__navigateDrivers('next')" style="
+            background: ${navButtonBg};
+            color: ${navButtonColor};
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+            ›
+          </button>
+        </div>
+
+        <div style="
+          text-align: center;
+          margin-top: 12px;
+          font-size: 13px;
+          color: ${counterColor};
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        ">
+          Driver ${currentIndex + 1} of ${drivers.length}
+        </div>
+        ` : ''}
+      </div>
+    `;
+  };
+
+  // Expose functions to global scope for button handlers
+  window.__navigateDrivers = navigate;
+  window.__goToDriver = (index) => {
+    currentIndex = index;
+    render();
+  };
+  window.__handleDriverAction = (action, driver) => {
+    handleAction(action, driver);
+  };
 
   // Initial render
-  renderApp();
+  render();
 
   // Listen for theme changes
-  window.addEventListener('openai:set_globals', function() {
-    renderApp();
+  window.addEventListener('openai:set_globals', () => {
+    render();
   });
 })();
