@@ -278,49 +278,59 @@ app.post('/mcp', async (req, res) => {
                   {
                     uri: 'ui://widget/driver-card.html',
                     mimeType: 'text/html+skybridge',
-                    text: `
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-.app-container { max-width: 600px; margin: 0 auto; padding: 16px; }
-.driver-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 20px; color: white; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
-.driver-card.dark { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
-.driver-header { display: flex; gap: 16px; margin-bottom: 16px; align-items: center; }
-.driver-photo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.3); }
-.driver-info { flex: 1; }
-.driver-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
-.driver-rating { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
-.star { color: #FFD700; font-size: 16px; }
-.star-empty { color: rgba(255,255,255,0.3); font-size: 16px; }
-.rating-text { font-size: 13px; opacity: 0.9; }
-.driver-experience { font-size: 12px; opacity: 0.8; }
-.quick-info { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
-.badge { background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-.info-section { background: rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; margin-bottom: 12px; }
-.section-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-.section-content { font-size: 13px; opacity: 0.9; }
-.specialty-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.specialty-tag { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 12px; }
-.availability { border-left: 3px solid #4CAF50; }
-.action-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
-.btn { border: none; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.btn-primary { background: white; color: #667eea; }
-.btn-primary:hover { background: #f0f0f0; transform: translateY(-2px); }
-.btn-secondary { background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.3); }
-.btn-secondary:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px); }
-.carousel-nav { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 16px; }
-.nav-btn { background: rgba(102,126,234,0.3); color: white; border: 2px solid rgba(255,255,255,0.3); width: 40px; height: 40px; border-radius: 50%; font-size: 20px; cursor: pointer; }
-.nav-btn:hover { transform: scale(1.1); }
-.carousel-dots { display: flex; gap: 8px; }
-.dot { width: 10px; height: 10px; border-radius: 5px; background: rgba(102,126,234,0.3); cursor: pointer; transition: all 0.3s; }
-.dot.active { width: 28px; background: #667eea; }
-.carousel-counter { text-align: center; margin-top: 8px; font-size: 12px; color: rgba(0,0,0,0.6); }
-.app-container.dark .carousel-counter { color: rgba(255,255,255,0.6); }
-.empty-state { text-align: center; padding: 40px; color: #666; }
-</style>
-<div id="root"></div>
-<script type="module">${componentCode}</script>
-                    `.trim(),
+                    text: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { overflow-x: hidden; }
+    .app-container { max-width: 600px; margin: 0 auto; padding: 16px; }
+    .driver-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 20px; color: white; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .driver-card.dark { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
+    .driver-header { display: flex; gap: 16px; margin-bottom: 16px; align-items: center; }
+    .driver-photo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid rgba(255,255,255,0.3); }
+    .driver-info { flex: 1; }
+    .driver-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .driver-rating { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .star { color: #FFD700; font-size: 16px; }
+    .star-empty { color: rgba(255,255,255,0.3); font-size: 16px; }
+    .rating-text { font-size: 13px; opacity: 0.9; }
+    .driver-experience { font-size: 12px; opacity: 0.8; }
+    .quick-info { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .badge { background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .info-section { background: rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; margin-bottom: 12px; }
+    .section-title { font-size: 12px; font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .section-content { font-size: 13px; opacity: 0.9; }
+    .specialty-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .specialty-tag { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 12px; }
+    .availability { border-left: 3px solid #4CAF50; }
+    .action-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+    .btn { border: none; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: white; color: #667eea; }
+    .btn-primary:hover { background: #f0f0f0; transform: translateY(-2px); }
+    .btn-secondary { background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.3); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px); }
+    .carousel-nav { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 16px; }
+    .nav-btn { background: rgba(102,126,234,0.3); color: white; border: 2px solid rgba(255,255,255,0.3); width: 40px; height: 40px; border-radius: 50%; font-size: 20px; cursor: pointer; }
+    .nav-btn:hover { transform: scale(1.1); }
+    .carousel-dots { display: flex; gap: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 5px; background: rgba(102,126,234,0.3); cursor: pointer; transition: all 0.3s; }
+    .dot.active { width: 28px; background: #667eea; }
+    .carousel-counter { text-align: center; margin-top: 8px; font-size: 12px; color: rgba(0,0,0,0.6); }
+    .app-container.dark .carousel-counter { color: rgba(255,255,255,0.6); }
+    .empty-state { text-align: center; padding: 40px; color: #666; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module">
+${componentCode}
+  </script>
+</body>
+</html>`,
                     _meta: {
                       'openai/widgetPrefersBorder': false,
                       'openai/widgetDescription': 'Displays driver profiles with ratings, vehicle information, availability, and booking options.',
