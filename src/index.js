@@ -5,11 +5,24 @@ import cors from 'cors';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import Stripe from 'stripe';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PORT = process.env.PORT || 3000;
+
+// Initialize Stripe with secret key
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-11-20.acacia' })
+  : null;
+
+if (!stripe) {
+  console.warn('⚠️  Stripe not initialized: STRIPE_SECRET_KEY not set');
+  console.warn('   Payment functionality will send follow-up messages instead');
+} else {
+  console.log('✓ Stripe initialized in', process.env.STRIPE_SECRET_KEY.startsWith('sk_test_') ? 'TEST' : 'LIVE', 'mode');
+}
 
 // Load drivers data
 let driversData = null;
@@ -221,7 +234,193 @@ app.get('/', async (req, res) => {
     status: 'running',
     drivers: driversData.drivers.length,
     endpoint: '/mcp',
+    stripeEnabled: !!stripe,
   });
+});
+
+// Stripe Checkout Session endpoint
+app.post('/api/create-checkout-session', async (req, res) => {
+  try {
+    const { instructorId, packageHours, email, selectedDate } = req.body;
+
+    if (!stripe) {
+      return res.status(503).json({
+        error: 'Stripe not configured',
+        message: 'Payment processing is not available. Please contact support.'
+      });
+    }
+
+    // Find the instructor
+    await ensureInitialized();
+    const instructor = driversData.drivers.find(d => d.id === instructorId);
+
+    if (!instructor) {
+      return res.status(404).json({ error: 'Instructor not found' });
+    }
+
+    // Calculate price with discount
+    const packages = [
+      { hours: 1, discount: 0 },
+      { hours: 2, discount: 0 },
+      { hours: 4, discount: 5 },
+      { hours: 10, discount: 10 },
+      { hours: 20, discount: 15 }
+    ];
+
+    const selectedPackage = packages.find(p => p.hours === packageHours) || packages[0];
+    const basePrice = instructor.pricePerHour * packageHours;
+    const discount = (basePrice * selectedPackage.discount) / 100;
+    const totalCost = basePrice - discount;
+
+    // Convert GBP to pence for Stripe (Stripe uses smallest currency unit)
+    const amountInPence = Math.round(totalCost * 100);
+
+    // Create Stripe Checkout Session
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      customer_email: email,
+      line_items: [
+        {
+          price_data: {
+            currency: 'gbp',
+            product_data: {
+              name: `Driving Lessons with ${instructor.name}`,
+              description: `${packageHours} hour${packageHours > 1 ? 's' : ''} of driving lessons${selectedDate ? ` on ${selectedDate}` : ''}`,
+              metadata: {
+                instructorId: instructor.id,
+                instructorName: instructor.name,
+                packageHours: packageHours.toString(),
+                selectedDate: selectedDate || 'Not selected',
+                transmission: instructor.transmission,
+              }
+            },
+            unit_amount: amountInPence,
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        instructorId: instructor.id,
+        instructorName: instructor.name,
+        packageHours: packageHours.toString(),
+        selectedDate: selectedDate || '',
+        customerEmail: email,
+      },
+      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/payment-cancelled`,
+    });
+
+    res.json({ sessionId: session.id, url: session.url });
+  } catch (error) {
+    console.error('Stripe checkout error:', error);
+    res.status(500).json({
+      error: 'Payment error',
+      message: error.message
+    });
+  }
+});
+
+// Payment success page
+app.get('/payment-success', async (req, res) => {
+  const { session_id } = req.query;
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Payment Successful</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          margin: 0;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+          background: white;
+          padding: 40px;
+          border-radius: 12px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+          text-align: center;
+          max-width: 500px;
+        }
+        .success-icon {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          background: #4CAF50;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 24px;
+        }
+        h1 { color: #1a1a1a; margin: 0 0 16px; }
+        p { color: #666; line-height: 1.6; }
+        .session-id { font-size: 12px; color: #999; margin-top: 24px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="success-icon">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h1>Payment Successful!</h1>
+        <p>Thank you for your booking. You will receive a confirmation email shortly with details about your driving lessons.</p>
+        <p>The instructor will contact you to schedule your lessons.</p>
+        ${session_id ? `<div class="session-id">Session ID: ${session_id}</div>` : ''}
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+// Payment cancelled page
+app.get('/payment-cancelled', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Payment Cancelled</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          margin: 0;
+          background: #f5f5f5;
+        }
+        .container {
+          background: white;
+          padding: 40px;
+          border-radius: 12px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+          text-align: center;
+          max-width: 500px;
+        }
+        h1 { color: #1a1a1a; margin: 0 0 16px; }
+        p { color: #666; line-height: 1.6; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Payment Cancelled</h1>
+        <p>Your payment was cancelled. You can return to the chat to try booking again.</p>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 // MCP endpoint - POST only for proper MCP protocol

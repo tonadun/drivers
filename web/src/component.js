@@ -587,25 +587,46 @@
     }
   };
 
-  const processPayment = () => {
+  const processPayment = async () => {
     if (!bookingState || !bookingState.email) {
       alert('Please enter your email address');
       return;
     }
 
     const { instructor, selectedDate, packageHours, email } = bookingState;
-    const totalCost = instructor.pricePerHour * packageHours;
 
-    // In a real implementation, this would integrate with Stripe
-    // For now, we'll send a follow-up message with booking details
-    if (window.openai?.sendFollowupMessage) {
-      const dateInfo = selectedDate ? ` on ${selectedDate}` : '';
-      window.openai.sendFollowupMessage({
-        prompt: `Process payment for ${packageHours} hour${packageHours > 1 ? 's' : ''} of lessons with ${instructor.name}${dateInfo}. Email: ${email}. Total: £${totalCost}`
+    try {
+      // Get the base URL from the current location
+      const baseUrl = window.location.origin;
+
+      // Create Stripe Checkout Session
+      const response = await fetch(`${baseUrl}/api/create-checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          instructorId: instructor.id,
+          packageHours,
+          email,
+          selectedDate,
+        }),
       });
-    }
 
-    closePaymentDialog();
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Payment failed');
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert(`Payment error: ${error.message}`);
+    }
   };
 
   // Render weekday circles
