@@ -238,16 +238,8 @@ app.get('/', async (req, res) => {
   });
 });
 
-// Get Stripe publishable key
-app.get('/api/stripe-config', (req, res) => {
-  res.json({
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
-    enabled: !!stripe
-  });
-});
-
-// Create Payment Intent endpoint for inline payment
-app.post('/api/create-payment-intent', async (req, res) => {
+// Create Stripe Checkout Session (opens in new window via openExternal)
+app.post('/api/create-checkout-session', async (req, res) => {
   try {
     const { instructorId, packageHours, email, selectedDate } = req.body;
 
@@ -283,26 +275,38 @@ app.post('/api/create-payment-intent', async (req, res) => {
     // Convert GBP to pence for Stripe (Stripe uses smallest currency unit)
     const amountInPence = Math.round(totalCost * 100);
 
-    // Create Payment Intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInPence,
-      currency: 'gbp',
-      receipt_email: email,
-      description: `${packageHours} hour${packageHours > 1 ? 's' : ''} of driving lessons with ${instructor.name}${selectedDate ? ` on ${selectedDate}` : ''}`,
+    // Create Stripe Checkout Session
+    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      customer_email: email,
+      line_items: [
+        {
+          price_data: {
+            currency: 'gbp',
+            product_data: {
+              name: `Driving Lessons with ${instructor.name}`,
+              description: `${packageHours} hour${packageHours > 1 ? 's' : ''} of driving lessons${selectedDate ? ` on ${selectedDate}` : ''}`,
+            },
+            unit_amount: amountInPence,
+          },
+          quantity: 1,
+        },
+      ],
       metadata: {
         instructorId: instructor.id,
         instructorName: instructor.name,
         packageHours: packageHours.toString(),
-        selectedDate: selectedDate || 'Not selected',
-        transmission: instructor.transmission,
+        selectedDate: selectedDate || '',
         customerEmail: email,
       },
+      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/payment-cancelled`,
     });
 
-    res.json({
-      clientSecret: paymentIntent.client_secret,
-      amount: totalCost,
-    });
+    res.json({ sessionId: session.id, url: session.url });
   } catch (error) {
     console.error('Payment Intent error:', error);
     res.status(500).json({
