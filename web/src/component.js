@@ -127,7 +127,7 @@
   };
 
   // Action handlers
-  const handleAction = (action, instructor) => {
+  const handleAction = async (action, instructor) => {
     if (action === 'book') {
       // Open payment dialog
       bookingState = {
@@ -138,6 +138,8 @@
       };
       showPaymentDialog = true;
       render();
+      // Initialize Stripe after render
+      await initializeStripeElements();
     } else if (action === 'availability') {
       selectedInstructorForCalendar = instructor;
       render();
@@ -320,7 +322,7 @@
     `;
   };
 
-  const bookDate = (instructor, dateString) => {
+  const bookDate = async (instructor, dateString) => {
     // Remember selected date and open payment dialog
     bookingState = {
       instructor,
@@ -330,6 +332,76 @@
     };
     showPaymentDialog = true;
     closeCalendar();
+    // Initialize Stripe after render
+    await initializeStripeElements();
+  };
+
+  // Load Stripe.js and initialize
+  let stripePromise = null;
+  let stripeElements = null;
+  let cardElement = null;
+  let paymentProcessing = false;
+
+  const loadStripe = async () => {
+    if (stripePromise) return stripePromise;
+
+    try {
+      // Load Stripe.js
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.async = true;
+      document.head.appendChild(script);
+
+      await new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = reject;
+      });
+
+      // Get publishable key from server
+      const baseUrl = window.location.origin;
+      const response = await fetch(`${baseUrl}/api/stripe-config`);
+      const { publishableKey } = await response.json();
+
+      if (!publishableKey) {
+        throw new Error('Stripe not configured');
+      }
+
+      stripePromise = window.Stripe(publishableKey);
+      return stripePromise;
+    } catch (error) {
+      console.error('Failed to load Stripe:', error);
+      return null;
+    }
+  };
+
+  const initializeStripeElements = async () => {
+    const stripe = await loadStripe();
+    if (!stripe) return;
+
+    stripeElements = stripe.elements();
+    cardElement = stripeElements.create('card', {
+      style: {
+        base: {
+          fontSize: '16px',
+          color: '#1a1a1a',
+          '::placeholder': {
+            color: '#999',
+          },
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        },
+        invalid: {
+          color: '#e74c3c',
+        },
+      },
+    });
+
+    // Mount the card element after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      const cardContainer = document.getElementById('card-element');
+      if (cardContainer && !cardElement._componentStatus) {
+        cardElement.mount('#card-element');
+      }
+    }, 100);
   };
 
   // Render payment dialog
@@ -530,8 +602,23 @@
               </div>
             </div>
 
+            <!-- Stripe Card Element -->
+            <div style="margin-bottom: 24px;">
+              <label style="display: block; font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px;">
+                Card Details
+              </label>
+              <div id="card-element" style="
+                padding: 12px 16px;
+                border: 2px solid #E0E0E0;
+                border-radius: 8px;
+                background: white;
+                min-height: 40px;
+              "></div>
+              <div id="card-errors" style="color: #e74c3c; font-size: 13px; margin-top: 8px;"></div>
+            </div>
+
             <!-- Pay Button -->
-            <button onclick="window.__processPayment()" style="
+            <button onclick="window.__processPayment()" id="payment-button" style="
               width: 100%;
               padding: 16px;
               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -547,13 +634,13 @@
               justify-content: center;
               gap: 8px;
             "
-            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'"
+            onmouseover="if(!this.disabled) { this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(102, 126, 234, 0.4)'; }"
             onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
                 <line x1="1" y1="10" x2="23" y2="10"></line>
               </svg>
-              Pay with Stripe
+              <span id="button-text">Pay £${totalCost.toFixed(2)}</span>
             </button>
 
             <!-- Security Notice -->
@@ -593,14 +680,25 @@
       return;
     }
 
+    if (!cardElement) {
+      alert('Payment form not ready. Please try again.');
+      return;
+    }
+
     const { instructor, selectedDate, packageHours, email } = bookingState;
+    const button = document.getElementById('payment-button');
+    const buttonText = document.getElementById('button-text');
+    const errorDiv = document.getElementById('card-errors');
 
     try {
-      // Get the base URL from the current location
-      const baseUrl = window.location.origin;
+      // Disable button and show loading
+      button.disabled = true;
+      buttonText.textContent = 'Processing...';
+      errorDiv.textContent = '';
 
-      // Create Stripe Checkout Session
-      const response = await fetch(`${baseUrl}/api/create-checkout-session`, {
+      // Create Payment Intent on server
+      const baseUrl = window.location.origin;
+      const response = await fetch(`${baseUrl}/api/create-payment-intent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -619,13 +717,37 @@
         throw new Error(data.message || 'Payment failed');
       }
 
-      // Redirect to Stripe Checkout
-      if (data.url) {
-        window.location.href = data.url;
+      // Confirm payment with card element
+      const stripe = await loadStripe();
+      const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            email: email,
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        // Payment successful!
+        if (window.openai?.sendFollowupMessage) {
+          const dateInfo = selectedDate ? ` on ${selectedDate}` : '';
+          window.openai.sendFollowupMessage({
+            prompt: `Payment successful! Booked ${packageHours} hour${packageHours > 1 ? 's' : ''} with ${instructor.name}${dateInfo}. Payment ID: ${paymentIntent.id}`
+          });
+        }
+        closePaymentDialog();
+        alert('Payment successful! You will receive a confirmation email shortly.');
       }
     } catch (error) {
       console.error('Payment error:', error);
-      alert(`Payment error: ${error.message}`);
+      errorDiv.textContent = error.message;
+      button.disabled = false;
+      buttonText.textContent = `Pay £${(instructor.pricePerHour * packageHours).toFixed(2)}`;
     }
   };
 

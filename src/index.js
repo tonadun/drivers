@@ -238,8 +238,16 @@ app.get('/', async (req, res) => {
   });
 });
 
-// Stripe Checkout Session endpoint
-app.post('/api/create-checkout-session', async (req, res) => {
+// Get Stripe publishable key
+app.get('/api/stripe-config', (req, res) => {
+  res.json({
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || null,
+    enabled: !!stripe
+  });
+});
+
+// Create Payment Intent endpoint for inline payment
+app.post('/api/create-payment-intent', async (req, res) => {
   try {
     const { instructorId, packageHours, email, selectedDate } = req.body;
 
@@ -275,47 +283,28 @@ app.post('/api/create-checkout-session', async (req, res) => {
     // Convert GBP to pence for Stripe (Stripe uses smallest currency unit)
     const amountInPence = Math.round(totalCost * 100);
 
-    // Create Stripe Checkout Session
-    const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      customer_email: email,
-      line_items: [
-        {
-          price_data: {
-            currency: 'gbp',
-            product_data: {
-              name: `Driving Lessons with ${instructor.name}`,
-              description: `${packageHours} hour${packageHours > 1 ? 's' : ''} of driving lessons${selectedDate ? ` on ${selectedDate}` : ''}`,
-              metadata: {
-                instructorId: instructor.id,
-                instructorName: instructor.name,
-                packageHours: packageHours.toString(),
-                selectedDate: selectedDate || 'Not selected',
-                transmission: instructor.transmission,
-              }
-            },
-            unit_amount: amountInPence,
-          },
-          quantity: 1,
-        },
-      ],
+    // Create Payment Intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInPence,
+      currency: 'gbp',
+      receipt_email: email,
+      description: `${packageHours} hour${packageHours > 1 ? 's' : ''} of driving lessons with ${instructor.name}${selectedDate ? ` on ${selectedDate}` : ''}`,
       metadata: {
         instructorId: instructor.id,
         instructorName: instructor.name,
         packageHours: packageHours.toString(),
-        selectedDate: selectedDate || '',
+        selectedDate: selectedDate || 'Not selected',
+        transmission: instructor.transmission,
         customerEmail: email,
       },
-      success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/payment-cancelled`,
     });
 
-    res.json({ sessionId: session.id, url: session.url });
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      amount: totalCost,
+    });
   } catch (error) {
-    console.error('Stripe checkout error:', error);
+    console.error('Payment Intent error:', error);
     res.status(500).json({
       error: 'Payment error',
       message: error.message
