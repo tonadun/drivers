@@ -53,7 +53,7 @@ async function loadComponentBundle() {
 }
 
 // Handle tool calls
-function handleToolCall(toolName, args) {
+async function handleToolCall(toolName, args) {
   switch (toolName) {
     case 'search_drivers': {
       // Get all instructors or filter by criteria
@@ -201,6 +201,82 @@ ${Object.entries(driver.weeklyAvailability).map(([day, available]) =>
         ],
         structuredContent: {
           drivers: [driver],
+        },
+      };
+    }
+
+    case 'create_payment_session': {
+      if (!stripe) {
+        throw new Error('Stripe not configured. Please set STRIPE_SECRET_KEY environment variable.');
+      }
+
+      const { instructorId, packageHours, email, selectedDate } = args;
+
+      // Find the instructor
+      const instructor = driversData.drivers.find(d => d.id === instructorId);
+      if (!instructor) {
+        throw new Error('Instructor not found');
+      }
+
+      // Calculate price with discount
+      const packages = [
+        { hours: 1, discount: 0 },
+        { hours: 2, discount: 0 },
+        { hours: 4, discount: 5 },
+        { hours: 10, discount: 10 },
+        { hours: 20, discount: 15 }
+      ];
+
+      const selectedPackage = packages.find(p => p.hours === packageHours) || packages[0];
+      const basePrice = instructor.pricePerHour * packageHours;
+      const discount = (basePrice * selectedPackage.discount) / 100;
+      const totalCost = basePrice - discount;
+      const amountInPence = Math.round(totalCost * 100);
+
+      // Create Stripe Checkout Session
+      const baseUrl = process.env.BASE_URL || 'https://drivers-kjbv0h8mn-tonadun-gmailcoms-projects.vercel.app';
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'payment',
+        customer_email: email,
+        line_items: [
+          {
+            price_data: {
+              currency: 'gbp',
+              product_data: {
+                name: `Driving Lessons with ${instructor.name}`,
+                description: `${packageHours} hour${packageHours > 1 ? 's' : ''} of driving lessons${selectedDate ? ` on ${selectedDate}` : ''}`,
+              },
+              unit_amount: amountInPence,
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: {
+          instructorId: instructor.id,
+          instructorName: instructor.name,
+          packageHours: packageHours.toString(),
+          selectedDate: selectedDate || '',
+          customerEmail: email,
+        },
+        success_url: `${baseUrl}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/payment-cancelled`,
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Payment session created for ${packageHours} hour${packageHours > 1 ? 's' : ''} with ${instructor.name}. Total: £${totalCost.toFixed(2)}`,
+          },
+        ],
+        structuredContent: {
+          sessionId: session.id,
+          url: session.url,
+          totalCost,
+          instructor: instructor.name,
+          packageHours,
         },
       };
     }
@@ -552,6 +628,37 @@ app.post('/mcp', async (req, res) => {
                     'openai/toolInvocation/invoked': 'Driver profile displayed',
                   },
                 },
+                {
+                  name: 'create_payment_session',
+                  description: 'Create a Stripe payment session for booking driving lessons. Can be initiated by the component.',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      instructorId: {
+                        type: 'string',
+                        description: 'The instructor ID',
+                      },
+                      packageHours: {
+                        type: 'number',
+                        description: 'Number of hours in the package (1, 2, 4, 10, or 20)',
+                      },
+                      email: {
+                        type: 'string',
+                        description: 'Customer email address',
+                      },
+                      selectedDate: {
+                        type: 'string',
+                        description: 'Optional: Selected booking date',
+                      },
+                    },
+                    required: ['instructorId', 'packageHours', 'email'],
+                  },
+                  _meta: {
+                    'openai/canInitiateFromComponent': true,
+                    'openai/toolInvocation/invoking': 'Creating payment session...',
+                    'openai/toolInvocation/invoked': 'Payment session created',
+                  },
+                },
               ],
             },
           };
@@ -562,7 +669,7 @@ app.post('/mcp', async (req, res) => {
           const args = request.params?.arguments || {};
 
           try {
-            const result = handleToolCall(toolName, args);
+            const result = await handleToolCall(toolName, args);
             response = {
               jsonrpc: '2.0',
               id: request.id,

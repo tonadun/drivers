@@ -615,50 +615,39 @@
       button.disabled = true;
       buttonText.textContent = 'Creating payment link...';
 
-      // Create Stripe Checkout Session (for external link)
-      const baseUrl = window.location.origin;
-      console.log('Sending payment request to:', `${baseUrl}/api/create-checkout-session`);
-
-      const response = await fetch(`${baseUrl}/api/create-checkout-session`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          instructorId: instructor.id,
-          packageHours,
-          email,
-          selectedDate,
-        }),
-      });
-
-      console.log('Response status:', response.status);
-      const data = await response.json();
-      console.log('Response data:', data);
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || 'Payment failed');
-      }
-
       // Check if window.openai exists
       if (!window.openai) {
-        console.error('window.openai is not available');
         throw new Error('Payment integration not available. Please try again in ChatGPT.');
       }
 
-      // Use window.openai.openExternal to open Stripe Checkout in new window
-      if (data.url) {
-        console.log('Opening external URL:', data.url);
-        window.openai.openExternal({ href: data.url });
-        closePaymentDialog();
+      console.log('Calling create_payment_session tool via window.openai.callTool');
 
-        if (window.openai.sendFollowupMessage) {
-          window.openai.sendFollowupMessage({
-            prompt: `Opening Stripe payment page for ${packageHours} hour${packageHours > 1 ? 's' : ''} with ${instructor.name}. Total: £${totalCost.toFixed(2)}. Please complete payment in the new window.`
-          });
-        }
-      } else {
+      // Use window.openai.callTool to call the MCP tool
+      const result = await window.openai.callTool('create_payment_session', {
+        instructorId: instructor.id,
+        packageHours,
+        email,
+        selectedDate,
+      });
+
+      console.log('Tool result:', result);
+
+      // Extract payment URL from structured content
+      const paymentUrl = result?.structuredContent?.url;
+
+      if (!paymentUrl) {
         throw new Error('No payment URL returned from server');
+      }
+
+      // Use window.openai.openExternal to open Stripe Checkout in new window
+      console.log('Opening external URL:', paymentUrl);
+      window.openai.openExternal({ href: paymentUrl });
+      closePaymentDialog();
+
+      if (window.openai.sendFollowupMessage) {
+        window.openai.sendFollowupMessage({
+          prompt: `Opening Stripe payment page for ${packageHours} hour${packageHours > 1 ? 's' : ''} with ${instructor.name}. Total: £${totalCost.toFixed(2)}. Please complete payment in the new window.`
+        });
       }
     } catch (error) {
       console.error('Payment error:', error);
