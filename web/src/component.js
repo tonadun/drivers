@@ -597,6 +597,19 @@
     const button = document.getElementById('payment-button');
     const buttonText = document.getElementById('button-text');
 
+    // Calculate total cost for button reset
+    const packages = [
+      { hours: 1, discount: 0 },
+      { hours: 2, discount: 0 },
+      { hours: 4, discount: 5 },
+      { hours: 10, discount: 10 },
+      { hours: 20, discount: 15 }
+    ];
+    const selectedPackage = packages.find(p => p.hours === packageHours) || packages[0];
+    const basePrice = instructor.pricePerHour * packageHours;
+    const discount = (basePrice * selectedPackage.discount) / 100;
+    const totalCost = basePrice - discount;
+
     try {
       // Disable button and show loading
       button.disabled = true;
@@ -604,6 +617,8 @@
 
       // Create Stripe Checkout Session (for external link)
       const baseUrl = window.location.origin;
+      console.log('Sending payment request to:', `${baseUrl}/api/create-checkout-session`);
+
       const response = await fetch(`${baseUrl}/api/create-checkout-session`, {
         method: 'POST',
         headers: {
@@ -617,29 +632,39 @@
         }),
       });
 
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok) {
-        throw new Error(data.message || 'Payment failed');
+        throw new Error(data.message || data.error || 'Payment failed');
+      }
+
+      // Check if window.openai exists
+      if (!window.openai) {
+        console.error('window.openai is not available');
+        throw new Error('Payment integration not available. Please try again in ChatGPT.');
       }
 
       // Use window.openai.openExternal to open Stripe Checkout in new window
-      if (data.url && window.openai?.openExternal) {
+      if (data.url) {
+        console.log('Opening external URL:', data.url);
         window.openai.openExternal({ href: data.url });
         closePaymentDialog();
-        if (window.openai?.sendFollowupMessage) {
+
+        if (window.openai.sendFollowupMessage) {
           window.openai.sendFollowupMessage({
-            prompt: `Opening payment page for ${packageHours} hour${packageHours > 1 ? 's' : ''} with ${instructor.name}. Please complete payment in the new window.`
+            prompt: `Opening Stripe payment page for ${packageHours} hour${packageHours > 1 ? 's' : ''} with ${instructor.name}. Total: £${totalCost.toFixed(2)}. Please complete payment in the new window.`
           });
         }
       } else {
-        throw new Error('Unable to open payment page');
+        throw new Error('No payment URL returned from server');
       }
     } catch (error) {
       console.error('Payment error:', error);
-      alert(`Payment error: ${error.message}`);
+      alert(`Payment error: ${error.message}\n\nPlease check:\n1. Environment variables are set in Vercel\n2. App is running in ChatGPT`);
       button.disabled = false;
-      buttonText.textContent = `Pay £${(instructor.pricePerHour * packageHours).toFixed(2)}`;
+      buttonText.textContent = `Pay £${totalCost.toFixed(2)}`;
     }
   };
 
