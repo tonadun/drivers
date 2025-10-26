@@ -375,33 +375,80 @@
   };
 
   const initializeStripeElements = async () => {
-    const stripe = await loadStripe();
-    if (!stripe) return;
-
-    stripeElements = stripe.elements();
-    cardElement = stripeElements.create('card', {
-      style: {
-        base: {
-          fontSize: '16px',
-          color: '#1a1a1a',
-          '::placeholder': {
-            color: '#999',
-          },
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        },
-        invalid: {
-          color: '#e74c3c',
-        },
-      },
-    });
-
-    // Mount the card element after a short delay to ensure DOM is ready
-    setTimeout(() => {
-      const cardContainer = document.getElementById('card-element');
-      if (cardContainer && !cardElement._componentStatus) {
-        cardElement.mount('#card-element');
+    try {
+      const stripe = await loadStripe();
+      if (!stripe) {
+        console.error('Stripe failed to load');
+        return;
       }
-    }, 100);
+
+      // Only create elements if not already created
+      if (!stripeElements) {
+        stripeElements = stripe.elements();
+      }
+
+      // Only create card element if not already created
+      if (!cardElement) {
+        cardElement = stripeElements.create('card', {
+          style: {
+            base: {
+              fontSize: '16px',
+              color: '#1a1a1a',
+              '::placeholder': {
+                color: '#999',
+              },
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            },
+            invalid: {
+              color: '#e74c3c',
+            },
+          },
+        });
+
+        // Listen for card errors
+        cardElement.on('change', (event) => {
+          const errorDiv = document.getElementById('card-errors');
+          if (errorDiv) {
+            errorDiv.textContent = event.error ? event.error.message : '';
+          }
+        });
+      }
+
+      // Wait for DOM to be ready and mount
+      const mountCard = () => {
+        const cardContainer = document.getElementById('card-element');
+        if (cardContainer) {
+          // Clear loading text
+          cardContainer.innerHTML = '';
+          cardContainer.style.display = 'block';
+
+          // Unmount first if already mounted to avoid errors
+          try {
+            cardElement.unmount();
+          } catch (e) {
+            // Ignore unmount errors
+          }
+
+          // Mount the card element
+          try {
+            cardElement.mount('#card-element');
+            console.log('Stripe card element mounted successfully');
+          } catch (error) {
+            console.error('Error mounting card element:', error);
+            cardContainer.innerHTML = 'Error loading payment form. Please refresh and try again.';
+            cardContainer.style.color = '#e74c3c';
+          }
+        } else {
+          console.error('Card element container not found in DOM');
+        }
+      };
+
+      // Try mounting after small delays to ensure DOM is ready
+      setTimeout(mountCard, 200);
+      setTimeout(mountCard, 500);
+    } catch (error) {
+      console.error('Error initializing Stripe Elements:', error);
+    }
   };
 
   // Render payment dialog
@@ -613,7 +660,10 @@
                 border-radius: 8px;
                 background: white;
                 min-height: 40px;
-              "></div>
+                display: flex;
+                align-items: center;
+                color: #999;
+              ">Loading payment form...</div>
               <div id="card-errors" style="color: #e74c3c; font-size: 13px; margin-top: 8px;"></div>
             </div>
 
