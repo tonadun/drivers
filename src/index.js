@@ -531,7 +531,7 @@ app.post('/mcp', async (req, res) => {
                   uri: 'ui://widget/driver-card.html',
                   name: 'Driving Instructor Finder',
                   description: 'Interactive UK driving instructor finder with filters, sorting, and booking',
-                  mimeType: 'text/html+skybridge',
+                  mimeType: 'text/html;profile=mcp-app',
                 },
               ],
             },
@@ -547,13 +547,20 @@ app.post('/mcp', async (req, res) => {
                 contents: [
                   {
                     uri: 'ui://widget/driver-card.html',
-                    mimeType: 'text/html+skybridge',
+                    mimeType: 'text/html;profile=mcp-app',
                     text: `
 <div id="root"></div>
 <script type="module">${componentCode}</script>
                     `.trim(),
                     _meta: {
-                      'openai/widgetPrefersBorder': false,
+                      ui: {
+                        prefersBorder: false,
+                        domain: process.env.BASE_URL || 'https://drivers-mu.vercel.app',
+                        csp: {
+                          connectDomains: [process.env.BASE_URL || 'https://drivers-mu.vercel.app'],
+                          resourceDomains: ['https://*.oaistatic.com'],
+                        },
+                      },
                       'openai/widgetDescription': 'UK driving instructor finder with filters (Manual/Automatic, time, day, gender), sorting options, and booking functionality.',
                     },
                   },
@@ -595,8 +602,13 @@ app.post('/mcp', async (req, res) => {
                       },
                     },
                   },
+                  annotations: {
+                    readOnlyHint: true,
+                    openWorldHint: false,
+                    destructiveHint: false,
+                  },
                   _meta: {
-                    'openai/outputTemplate': 'ui://widget/driver-card.html',
+                    ui: { resourceUri: 'ui://widget/driver-card.html' },
                     'openai/toolInvocation/invoking': 'Searching for driving instructors...',
                     'openai/toolInvocation/invoked': 'Instructor profiles displayed',
                   },
@@ -607,6 +619,11 @@ app.post('/mcp', async (req, res) => {
                   inputSchema: {
                     type: 'object',
                     properties: {},
+                  },
+                  annotations: {
+                    readOnlyHint: true,
+                    openWorldHint: false,
+                    destructiveHint: false,
                   },
                 },
                 {
@@ -622,8 +639,13 @@ app.post('/mcp', async (req, res) => {
                     },
                     required: ['driverId'],
                   },
+                  annotations: {
+                    readOnlyHint: true,
+                    openWorldHint: false,
+                    destructiveHint: false,
+                  },
                   _meta: {
-                    'openai/outputTemplate': 'ui://widget/driver-card.html',
+                    ui: { resourceUri: 'ui://widget/driver-card.html' },
                     'openai/toolInvocation/invoking': 'Loading driver profile...',
                     'openai/toolInvocation/invoked': 'Driver profile displayed',
                   },
@@ -653,8 +675,16 @@ app.post('/mcp', async (req, res) => {
                     },
                     required: ['instructorId', 'packageHours', 'email'],
                   },
+                  annotations: {
+                    readOnlyHint: false,
+                    openWorldHint: false,
+                    destructiveHint: false,
+                  },
                   _meta: {
-                    'openai/canInitiateFromComponent': true,
+                    ui: {
+                      resourceUri: 'ui://widget/driver-card.html',
+                      visibility: ['model', 'app'],
+                    },
                     'openai/toolInvocation/invoking': 'Creating payment session...',
                     'openai/toolInvocation/invoked': 'Payment session created',
                   },
